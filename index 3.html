@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jura Lernplan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F8F7F4; font-family: Georgia, 'Times New Roman', serif; color: #1A1A1A; min-height: 100vh; }
+
+    /* Header */
+    #header {
+      background: #1A1A1A; color: #F8F7F4;
+      padding: 18px 20px 14px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    #header-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 720px; margin: 0 auto; }
+    #header .label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.5; margin-bottom: 2px; }
+    #header .title { font-size: 17px; }
+    #progress-wrap { text-align: right; }
+    #progress-wrap .plabel { font-size: 11px; opacity: 0.5; margin-bottom: 5px; }
+    #progress-bar-outer { display: flex; align-items: center; gap: 10px; }
+    #progress-bar-bg { width: 110px; height: 4px; background: #333; border-radius: 2px; }
+    #progress-bar-fill { height: 100%; background: #C8A96E; border-radius: 2px; transition: width 0.3s; }
+    #progress-pct { font-size: 13px; color: #C8A96E; font-family: monospace; }
+
+    /* Main */
+    #main { padding: 18px 16px; max-width: 720px; margin: 0 auto; }
+
+    /* Phase tabs */
+    #phase-tabs { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px; }
+    .phase-tab {
+      padding: 6px 14px; border-radius: 20px; font-size: 12px;
+      font-family: Georgia, serif; cursor: pointer; white-space: nowrap;
+      border: 1.5px solid #DDD; background: white; color: #666;
+      transition: all 0.15s;
+    }
+    .phase-tab.active { font-weight: 600; }
+
+    /* Phase info */
+    #phase-info {
+      background: white; border: 1px solid #E8E5DF; border-radius: 8px;
+      padding: 13px 16px; margin-bottom: 14px;
+      border-left-width: 3px; border-left-style: solid;
+    }
+    #phase-info-inner { display: flex; justify-content: space-between; align-items: flex-start; }
+    #phase-info .pi-label { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    #phase-info .pi-sub { font-size: 12px; color: #888; }
+    #phase-info .pi-tasks { font-size: 12px; color: #888; text-align: right; }
+
+    /* Week cards */
+    .week-card {
+      background: white; border: 1px solid #E8E5DF; border-radius: 8px;
+      padding: 13px 16px; margin-bottom: 10px; cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .week-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .week-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .week-num { font-size: 11px; color: #999; margin-bottom: 3px; letter-spacing: 0.05em; }
+    .week-title { font-size: 14px; color: #1A1A1A; }
+    .week-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+    .week-pct { font-size: 13px; font-family: monospace; font-weight: 600; }
+    .week-hours { font-size: 11px; color: #999; }
+    .week-bar-bg { height: 3px; background: #F0EDE8; border-radius: 2px; }
+    .week-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .week-days { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+    .day-chip { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-family: monospace; border: 1px solid transparent; }
+
+    /* Week detail */
+    #back-row { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    #back-btn {
+      background: none; border: 1px solid #DDD; border-radius: 20px;
+      padding: 5px 12px; font-size: 12px; cursor: pointer; color: #666;
+      font-family: Georgia, serif;
+    }
+    #week-detail-title { flex: 1; }
+    #week-detail-title .wdt-num { font-size: 11px; color: #999; letter-spacing: 0.05em; }
+    #week-detail-title .wdt-name { font-size: 15px; }
+    #week-count { font-family: monospace; font-size: 13px; font-weight: 600; }
+
+    .day-block { background: white; border: 1px solid #E8E5DF; border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+    .day-header { padding: 10px 16px; border-bottom: 1px solid #E8E5DF; display: flex; justify-content: space-between; align-items: center; }
+    .day-name { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; }
+    .day-h { font-size: 11px; color: #999; }
+    .task-row {
+      padding: 13px 16px; cursor: pointer; display: flex; gap: 12px;
+      align-items: flex-start; border-bottom: 1px solid #F0EDE8;
+      transition: background 0.15s;
+    }
+    .task-row:last-child { border-bottom: none; }
+    .task-row.done { background: #FAFDF7; }
+    .task-checkbox {
+      width: 18px; height: 18px; border-radius: 3px; border: 2px solid #DDD;
+      background: white; flex-shrink: 0; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; font-size: 11px; color: white;
+    }
+    .task-checkbox.checked { border-color: var(--phase-color); background: var(--phase-color); }
+    .task-what { font-size: 14px; color: #1A1A1A; margin-bottom: 4px; }
+    .task-row.done .task-what { color: #888; text-decoration: line-through; }
+    .task-how { font-size: 12px; color: #777; line-height: 1.5; margin-bottom: 5px; }
+    .task-resource { font-size: 10px; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.03em; display: inline-block; }
+
+    /* Nav buttons */
+    #week-nav { display: flex; gap: 8px; margin-top: 16px; }
+    .nav-btn {
+      flex: 1; padding: 10px; border: 1px solid #DDD; border-radius: 6px;
+      background: white; color: #555; cursor: pointer; font-family: Georgia, serif; font-size: 13px;
+    }
+    .nav-btn:disabled { color: #CCC; cursor: default; }
+
+    @media (max-width: 480px) {
+      #header { padding: 14px 14px 12px; }
+      #main { padding: 14px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-inner">
+    <div>
+      <div class="label">Jura Vorstudium</div>
+      <div class="title">12-Monats Lernplan</div>
+    </div>
+    <div id="progress-wrap">
+      <div class="plabel">Gesamtfortschritt</div>
+      <div id="progress-bar-outer">
+        <div id="progress-bar-bg"><div id="progress-bar-fill" style="width:0%"></div></div>
+        <div id="progress-pct">0%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="phase-tabs"></div>
+  <div id="overview">
+    <div id="phase-info"></div>
+    <div id="week-list"></div>
+  </div>
+  <div id="week-detail" style="display:none">
+    <div id="back-row">
+      <button id="back-btn" onclick="showOverview()">← Zurück</button>
+      <div id="week-detail-title">
+        <div class="wdt-num" id="wdt-num"></div>
+        <div class="wdt-name" id="wdt-name"></div>
+      </div>
+      <div id="week-count"></div>
+    </div>
+    <div id="day-list"></div>
+    <div id="week-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navWeek(-1)">← Vorherige Woche</button>
+      <button class="nav-btn" id="next-btn" onclick="navWeek(1)">Nächste Woche →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PHASES = [
+  {
+    id: 0, label: "Phase 0", title: "Fundament", subtitle: "Mai – Juli 2026",
+    color: "#2563EB", bg: "#EFF6FF",
+    weeks: [
+      { week: 1, title: "Gutachtenstil — Einstieg", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Rechtsnerd YouTube", how: "5 Videos zu Gutachtenstil schauen — mitschreiben, nicht nur konsumieren", resource: "YouTube: Rechtsnerd" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Gutachtenstil Schema", how: "Obersatz → Definition → Subsumtion → Ergebnis aufschreiben und mit 3 eigenen Beispielsätzen üben", resource: "Eigene Notizen" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Rechtsnerd YouTube", how: "5 weitere Videos, Fokus: Wie sieht ein vollständiger Gutachten-Absatz aus?", resource: "YouTube: Rechtsnerd" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Schema auswendig", how: "Gutachtenstil-Schema ohne Vorlage aufschreiben können. 3 Mini-Fälle (frei erfunden) im Schema lösen", resource: "Eigene Notizen" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Wiederholung", how: "Nochmal alle Notizen der Woche durchgehen, Lücken identifizieren", resource: "Eigene Notizen" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Praxis", how: "3 einfache Fälle aus Jurakompakt YouTube im Gutachtenstil schriftlich lösen — nicht tippen, handschriftlich", resource: "YouTube: Jurakompakt" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review", how: "Was war diese Woche unklar? Eine Seite Zusammenfassung schreiben", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 2, title: "Gutachtenstil — Festigung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Rechtsnerd YouTube", how: "3 Videos — diesmal Fokus auf Fehler im Gutachtenstil", resource: "YouTube: Rechtsnerd" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Anfechtungsfall üben", how: "Einen einfachen Anfechtungsfall (§ 119 BGB) im Schema schriftlich lösen — Musterlösung danach vergleichen", resource: "YouTube: Jurakompakt + BGB" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Definitionen lernen", how: "Was ist eine Willenserklärung? Was ist ein Vertrag? Definitionen auf Karteikarten (Anki oder Papier)", resource: "Köhler BGB AT Einführung" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "2 Übungsfälle", how: "Zwei Kurzfälle (je ~1 Seite) im Gutachtenstil lösen — Fokus auf saubere Struktur, nicht auf Inhalt", resource: "Eigene Fälle / YouTube" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Jurakompakt YouTube", how: "BGB AT Intro-Serie starten — erste 3 Videos", resource: "YouTube: Jurakompakt" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Wochenrückblick + Fälle", how: "Alle Fälle der Woche nochmal ohne Vorlage lösen. Was sitzt, was nicht?", resource: "Eigene Notizen" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Vorbereitung Woche 3", how: "Köhler BGB AT: Inhaltsverzeichnis lesen, Aufbau verstehen", resource: "Köhler BGB AT" }] },
+      ]},
+      { week: 3, title: "BGB AT: Rechtssubjekte & -objekte", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Köhler BGB AT lesen", how: "Kapitel zu Rechtsfähigkeit und natürliche Personen — ruhig lesen, verstehen", resource: "Köhler BGB AT" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 1–14 BGB", how: "Paragraphen im Gesetz lesen, wichtige Begriffe markieren. Was ist Rechtsfähigkeit vs. Geschäftsfähigkeit?", resource: "BGB + Köhler" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Juristische Personen", how: "Köhler zu juristischen Personen lesen + Jurakompakt Video dazu", resource: "Köhler + YouTube: Jurakompakt" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Anki-Karten erstellen", how: "Definitionen: Rechtsfähigkeit, Geschäftsfähigkeit, beschränkte Geschäftsfähigkeit, juristische Person", resource: "Anki" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Übungsfall", how: "Fall zur Geschäftsfähigkeit (z.B. 16-Jähriger kauft Handy) im Gutachtenstil lösen", resource: "Eigener Fall / YouTube" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Vertiefung + Wiederholung", how: "§§ 104–113 BGB durchlesen. 2 weitere Fälle zur Geschäftsfähigkeit lösen.", resource: "BGB + Köhler" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki wiederholen", how: "Alle Karten der Woche durchgehen", resource: "Anki" }] },
+      ]},
+      { week: 4, title: "BGB AT: Willenserklärung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video zur Willenserklärung schauen — Überblick verschaffen", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Köhler: WE lesen", how: "Kapitel Willenserklärung lesen — objektiver und subjektiver Tatbestand verstehen", resource: "Köhler BGB AT" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "§§ 116–118 BGB", how: "Geheimvorbehalt, Scheingeschäft, Scherzerklärung — je einen Beispielfall im Schema lösen", resource: "BGB + Köhler" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Auslegung §§ 133, 157", how: "Wie wird eine WE ausgelegt? Anki-Karten erstellen", resource: "BGB + Anki" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Übungsfall WE", how: "Fall: Jemand hebt versehentlich die Hand bei einer Auktion — WE oder nicht? Im Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Zugang der WE", how: "§ 130 BGB — wann ist eine WE zugegangen? 3 Fälle lösen (Brief, E-Mail, mündlich)", resource: "BGB + Köhler" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki + Review", how: "Alle Karten wiederholen, Woche zusammenfassen", resource: "Anki" }] },
+      ]},
+      { week: 5, title: "BGB AT: Anfechtung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video zur Anfechtung — Überblick", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 119–124 BGB lesen", how: "Alle Anfechtungsgründe im Gesetz lesen und verstehen — welcher wann?", resource: "BGB" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Köhler: Anfechtung", how: "Kapitel lesen + Prüfungsschema Anfechtung aufbauen: Grund → Frist → Erklärung → Folge", resource: "Köhler BGB AT" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Anfechtungsfall 1", how: "Irrtum nach § 119 I BGB — Fall lösen, Musterlösung vergleichen", resource: "Eigener Fall / YouTube" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anfechtungsfall 2", how: "Arglistige Täuschung § 123 — Fall lösen", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "3 Anfechtungsfälle", how: "Drei gemischte Fälle lösen (§§ 119, 120, 123). Fokus: sauberes Schema, nicht Schnelligkeit", resource: "Alpmann Schmidt / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki + Wochenziel", how: "Alle Anfechtungs-Definitionen auf Abruf können?", resource: "Anki" }] },
+      ]},
+      { week: 6, title: "BGB AT: Vertragsschluss", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Vertragsschluss Angebot & Annahme", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 145–157 BGB", how: "Angebot, Annahme, Schweigen — alle Paragraphen lesen und markieren", resource: "BGB" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Köhler: Vertragsschluss", how: "Kapitel lesen. Was unterscheidet invitatio ad offerendum vom Angebot?", resource: "Köhler BGB AT" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Übungsfall: Onlinekauf", how: "Fall: A bestellt im Online-Shop — wann kommt der Vertrag zustande? Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anki-Karten", how: "Definitionen: Angebot, Annahme, invitatio, Schweigen als Annahme", resource: "Anki" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "3 Vertragsschluss-Fälle", how: "Schreiben, vergleichen, nachbessern — ein Fall muss unter Zeitdruck (30 Min) gelöst werden", resource: "Alpmann Schmidt / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review Wochen 3–6", how: "Kurze Zusammenfassung: Was habe ich gelernt, was sitzt noch nicht?", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 7, title: "BGB AT: Stellvertretung I", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Stellvertretung — Überblick", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 164–171 BGB", how: "Grundstruktur der Stellvertretung im Gesetz lesen", resource: "BGB" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Köhler: Stellvertretung", how: "Kapitel lesen — Vollmacht, Vertretungsmacht, Handeln in fremdem Namen", resource: "Köhler BGB AT" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Prüfungsschema", how: "Schema Stellvertretung aufbauen: eigene WE → im Namen des Vertretenen → mit Vertretungsmacht", resource: "Eigene Notizen" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Übungsfall", how: "A schickt B zum Autokauf — Vertrag wirksam? Im Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "2 Stellvertretungsfälle", how: "Inkl. einem Fall ohne Vertretungsmacht — was passiert dann? (§ 177 ff.)", resource: "BGB + YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki", how: "Definitionen Stellvertretung festigen", resource: "Anki" }] },
+      ]},
+      { week: 8, title: "BGB AT: Stellvertretung II + Verjährung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "§§ 177–181 BGB", how: "Vertreter ohne Vertretungsmacht — lesen und verstehen", resource: "BGB" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Verjährung §§ 194–218", how: "Köhler lesen + Jurakompakt Video zur Verjährung", resource: "Köhler + YouTube" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Anki-Karten Verjährung", how: "Regelfristen, Beginn, Hemmung, Neubeginn auf Karten", resource: "Anki" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Übungsfall Verjährung", how: "Wann verjährt Kaufpreisanspruch aus 2023? Im Schema berechnen", resource: "Eigener Fall" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Integrierter Fall", how: "Fall mit Vertragsschluss + Stellvertretung + Anfechtung kombiniert lösen", resource: "YouTube / Alpmann Schmidt" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "BGB AT Gesamtwiederholung", how: "Alle Schemata ohne Vorlage aufschreiben. Was fehlt noch?", resource: "Eigene Notizen" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki Gesamtdurchlauf", how: "Alle Karten aus Wochen 1–8 einmal durch", resource: "Anki" }] },
+      ]},
+      { week: 9, title: "SchuldR AT: Entstehung & Grundstruktur", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Schuldverhältnis — Überblick", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Brox/Walker SchuldR AT", how: "Kapitel 1–3 lesen — wie entsteht ein Schuldverhältnis?", resource: "Brox/Walker SchuldR AT" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "§§ 241–243 BGB", how: "Inhalt der Schuldverhältnisse — Haupt- und Nebenpflichten verstehen", resource: "BGB + Brox/Walker" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Anki-Karten", how: "Definitionen: Obligation, Forderung, Schuld, Haftung", resource: "Anki" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Übungsfall", how: "Wer schuldet was in einem einfachen Kaufvertrag? Leistungspflichten aufschlüsseln", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "§§ 280–283 BGB", how: "Pflichtverletzung und Schadensersatz — lesen, Schema aufbauen, 1 Fall lösen", resource: "BGB + Brox/Walker" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki + Review", how: "Wochenzusammenfassung", resource: "Anki" }] },
+      ]},
+      { week: 10, title: "SchuldR AT: Leistungsstörungen I", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Unmöglichkeit — Überblick", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§ 275 BGB", how: "Unmöglichkeit — alle drei Absätze lesen und unterscheiden", resource: "BGB + Brox/Walker" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "§§ 280–281 BGB", how: "Schadensersatz statt der Leistung — Schema aufbauen", resource: "BGB + Brox/Walker" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Unmöglichkeitsfall", how: "Verkäufer verbrennt das Auto vor Übergabe — Rechtsfolgen? Im Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anki-Karten", how: "Unmöglichkeit, Pflichtverletzung, Vertretenmüssen", resource: "Anki" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "2 Leistungsstörungsfälle", how: "Aus Alpmann Schmidt oder YouTube — schriftlich lösen und vergleichen", resource: "Alpmann Schmidt / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review", how: "Was ist der Unterschied: § 275 vs. § 280? Klar erklären können.", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 11, title: "SchuldR AT: Verzug", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Verzug — Schuldner- und Gläubigerverzug", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 286–288 BGB", how: "Schuldnerverzug — Voraussetzungen im Gesetz lesen + Schema aufbauen", resource: "BGB + Brox/Walker" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "§§ 293–304 BGB", how: "Gläubigerverzug — lesen und mit Schuldnerverzug vergleichen", resource: "BGB" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Verzugsfall", how: "A zahlt Kaufpreis nicht — welche Rechte hat B? Im Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anki-Karten Verzug", how: "Alle Voraussetzungen des Schuldnerverzugs auf Karten", resource: "Anki" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Integrierter Fall", how: "Kaufvertrag + Pflichtverletzung + Verzug in einem Fall lösen", resource: "Alpmann Schmidt / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki Gesamtdurchlauf", how: "BGB AT + SchuldR AT bisher", resource: "Anki" }] },
+      ]},
+      { week: 12, title: "Staatsrecht I: Grundrechtsprüfung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Verwaltungsrecht Online", how: "Intro-Video Grundrechte — Überblick", resource: "YouTube: Verwaltungsrecht Online" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Ipsen Staatsrecht I", how: "Einführung + Kapitel Grundrechtsfunktionen lesen", resource: "Ipsen Staatsrecht I" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Dreistufige Prüfung", how: "Schema aufbauen: Schutzbereich → Eingriff → Rechtfertigung. Art. 2 I GG als Beispiel durchprüfen", resource: "GG + Ipsen" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Art. 1, 2 GG", how: "Menschenwürde und allgemeines Persönlichkeitsrecht — lesen und verstehen", resource: "GG + Ipsen" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Grundrechtsfall", how: "Rauchverbot in Gaststätte — Grundrechtsprüfung im Schema", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Art. 5, 8, 9 GG", how: "Meinungsfreiheit, Versammlungsfreiheit, Vereinigungsfreiheit — je eine Grundrechtsprüfung", resource: "GG + Ipsen" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review Phase 0", how: "Was habe ich in 12 Wochen gelernt? Wo sind die größten Lücken?", resource: "Eigene Notizen" }] },
+      ]},
+    ]
+  },
+  {
+    id: 1, label: "Phase 1", title: "Schuldrecht & Staatsrecht", subtitle: "Aug – Okt 2026",
+    color: "#16A34A", bg: "#F0FDF4",
+    weeks: [
+      { week: 13, title: "SchuldR AT: Schadensrecht vertiefen", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt Video", how: "Schadensrecht Überblick", resource: "YouTube" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 249–254 BGB", how: "Schadensarten, Kausalität, Mitverschulden lesen + Schema", resource: "BGB + Brox/Walker" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Naturalrestitution vs. Geldersatz", how: "Wann was? Fälle dazu lösen", resource: "Brox/Walker + eigene Fälle" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Mitverschulden § 254", how: "Fall: A fährt bei Rot, B ebenfalls — Schadensteilung im Schema lösen", resource: "Eigener Fall" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anki", how: "Schadensrecht-Definitionen festigen", resource: "Anki" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "2 Schadensersatzfälle", how: "Aus Alpmann Schmidt — vollständig im Schema lösen", resource: "Alpmann Schmidt" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review", how: "Wochenzusammenfassung", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 14, title: "SchuldR AT: Rücktritt & Kündigung", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Jurakompakt", how: "Video Rücktritt", resource: "YouTube: Jurakompakt" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 323–326 BGB", how: "Rücktrittsvoraussetzungen lesen + Schema aufbauen", resource: "BGB + Brox/Walker" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Rücktrittsfall", how: "Käufer will zurücktreten weil Ware mangelhaft — wann möglich? Im Schema", resource: "Eigener Fall" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "§§ 346–354 BGB", how: "Rücktrittsfolgen — was muss zurückgegeben werden?", resource: "BGB" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Anki", how: "Rücktritt-Voraussetzungen und Folgen auf Karten", resource: "Anki" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Integrierter Fall", how: "Kaufvertrag + Pflichtverletzung + Rücktritt + Schadensersatz in einem Fall", resource: "Alpmann Schmidt / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki Gesamtdurchlauf", how: "SchuldR AT komplett", resource: "Anki" }] },
+      ]},
+      { week: 15, title: "SchuldR AT: Abschluss + erste Klausur", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Wiederholung", how: "Alle Schemata SchuldR AT ohne Vorlage aufschreiben", resource: "Eigene Notizen" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Lücken schließen", how: "Was ist noch unklar? Gezielt nacharbeiten", resource: "Brox/Walker + YouTube" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Probe-Klausur vorbereiten", how: "Themen durchgehen, letzter Anki-Durchlauf", resource: "Anki" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Klausur schreiben", how: "Erste richtige Probe-Klausur (90 Min) unter Zeitdruck — BGB AT + SchuldR AT", resource: "Alpmann Schmidt Klausurensammlung" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Klausur nacharbeiten", how: "Musterlösung lesen, Fehler analysieren, gleiche Klausur nochmal lösen", resource: "Musterlösung" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Zweite Probe-Klausur", how: "Nochmal 90 Min unter Druck — anderer Fall, gleicher Bereich", resource: "Alpmann Schmidt" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review", how: "Was sind meine 3 häufigsten Fehler in Klausuren?", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 16, title: "Staatsrecht I: Grundrechte vertiefen", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Verwaltungsrecht Online", how: "Video zu Art. 3 GG (Gleichheitssatz)", resource: "YouTube" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Art. 3, 4 GG", how: "Gleichheitssatz und Religionsfreiheit — Ipsen lesen + Grundrechtsprüfung", resource: "GG + Ipsen" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Art. 12, 14 GG", how: "Berufsfreiheit und Eigentumsgarantie — lesen + je eine Prüfung", resource: "GG + Ipsen" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Verhältnismäßigkeit", how: "Schema aufbauen: Geeignet, Erforderlich, Angemessen", resource: "Ipsen + YouTube" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Grundrechtsfall", how: "Berufsverbot für Bäcker wegen Hygienemängeln — Art. 12 GG prüfen", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "2 ÖR-Fälle", how: "Je ein Fall Art. 5 und Art. 14 GG lösen", resource: "Alpmann Schmidt ÖR" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki", how: "Grundrechte-Definitionen", resource: "Anki" }] },
+      ]},
+    ]
+  },
+  {
+    id: 2, label: "Phase 2", title: "Semester 1 — Strafrecht", subtitle: "Okt – Dez 2026",
+    color: "#D97706", bg: "#FFFBEB",
+    weeks: [
+      { week: 25, title: "Strafrecht AT: Tatbestand", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Strafrecht at its best", how: "Intro-Video Deliktsaufbau", resource: "YouTube" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "Wessels/Beulke §§ 1–5", how: "Einführung Strafrecht + Deliktsaufbau lesen", resource: "Wessels/Beulke" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Tatbestand: objektiv", how: "Handlung, Erfolg, Kausalität — Schema aufbauen", resource: "Wessels/Beulke + YouTube" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Tatbestand: subjektiv", how: "Vorsatz (dolus directus I/II, dolus eventualis) — Definitionen + Anki", resource: "Anki + Wessels" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Strafrechtsfall 1", how: "Einfacher Körperverletzungsfall im Deliktsschema lösen", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "2 Strafrechtsfälle", how: "Aus Rengier oder YouTube — Tatbestandsprüfung vollständig", resource: "Rengier BT I / YouTube" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Review", how: "Deliktsaufbau auswendig können", resource: "Eigene Notizen" }] },
+      ]},
+      { week: 26, title: "Strafrecht AT: Rechtswidrigkeit & Schuld", days: [
+        { day: "Mo", hours: 1, tasks: [{ what: "Strafrecht at its best", how: "Video Notwehr — Überblick", resource: "YouTube" }] },
+        { day: "Di", hours: 2, tasks: [{ what: "§§ 32–35 StGB", how: "Notwehr, Notstand — im Gesetz lesen", resource: "StGB + Wessels" }] },
+        { day: "Mi", hours: 2, tasks: [{ what: "Notwehr-Schema", how: "Prüfungsschema: Angriff → Verteidigung → Erforderlichkeit → Gebotenheit", resource: "Eigene Notizen" }] },
+        { day: "Do", hours: 2, tasks: [{ what: "Schuld", how: "Schuldunfähigkeit § 20 StGB — Voraussetzungen + Anki", resource: "Wessels + Anki" }] },
+        { day: "Fr", hours: 2, tasks: [{ what: "Notwehrfall", how: "A wird von B angegriffen und schlägt zurück — Notwehr? Im Schema", resource: "Eigener Fall" }] },
+        { day: "Sa", hours: 3, tasks: [{ what: "Integrierter Strafrechtsfall", how: "Tatbestand + Rechtswidrigkeit + Schuld komplett durchprüfen", resource: "Alpmann Schmidt" }] },
+        { day: "So", hours: 1, tasks: [{ what: "Anki Strafrecht", how: "Alle Karten Strafrecht AT bisher", resource: "Anki" }] },
+      ]},
+    ]
+  },
+  {
+    id: 3, label: "Phase 3", title: "Intensivierung", subtitle: "Jan – Apr 2027",
+    color: "#DC2626", bg: "#FEF2F2",
+    weeks: [
+      { week: 40, title: "Folgt ab Woche 10 — wird dann ausgebaut", days: [
+        { day: "Mo", hours: 0, tasks: [{ what: "Noch nicht verfügbar", how: "Phase 3 wird ausgebaut wenn du Woche 10 abgeschlossen hast. Komm dann zurück zu Claude.", resource: "—" }] },
+      ]},
+    ]
+  },
+];
+
+const STORAGE_KEY = "jura_progress_v3";
+let progress = {};
+try { progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch {}
+
+let currentPhase = 0;
+let currentWeekIdx = null;
+
+function saveProgress() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch {}
+}
+
+function taskKey(phaseId, weekNum, dayIdx, taskIdx) {
+  return `p${phaseId}_w${weekNum}_d${dayIdx}_t${taskIdx}`;
+}
+
+function weekProgress(phase, week) {
+  let done = 0, total = 0;
+  week.days.forEach((d, di) => d.tasks.forEach((_, ti) => {
+    total++;
+    if (progress[taskKey(phase.id, week.week, di, ti)]) done++;
+  }));
+  return { done, total };
+}
+
+function totalProgress() {
+  let done = 0, total = 0;
+  PHASES.forEach(ph => ph.weeks.forEach(w => {
+    const p = weekProgress(ph, w);
+    done += p.done; total += p.total;
+  }));
+  return total > 0 ? Math.round((done / total) * 100) : 0;
+}
+
+function updateHeader() {
+  const pct = totalProgress();
+  document.getElementById("progress-bar-fill").style.width = pct + "%";
+  document.getElementById("progress-pct").textContent = pct + "%";
+}
+
+function renderPhaseTabs() {
+  const container = document.getElementById("phase-tabs");
+  container.innerHTML = "";
+  PHASES.forEach((ph, i) => {
+    const btn = document.createElement("button");
+    btn.className = "phase-tab" + (i === currentPhase ? " active" : "");
+    btn.textContent = ph.label + " · " + ph.title;
+    btn.style.cssText = i === currentPhase
+      ? `border-color:${ph.color};background:${ph.bg};color:${ph.color};`
+      : "";
+    btn.onclick = () => { currentPhase = i; renderOverview(); };
+    container.appendChild(btn);
+  });
+}
+
+function renderOverview() {
+  renderPhaseTabs();
+  const ph = PHASES[currentPhase];
+
+  // Phase info
+  let phDone = 0, phTotal = 0;
+  ph.weeks.forEach(w => { const p = weekProgress(ph, w); phDone += p.done; phTotal += p.total; });
+  document.getElementById("phase-info").style.borderLeftColor = ph.color;
+  document.getElementById("phase-info").innerHTML = `
+    <div id="phase-info-inner">
+      <div>
+        <div class="pi-label" style="color:${ph.color}">${ph.label} — ${ph.title}</div>
+        <div class="pi-sub">${ph.subtitle} · ${ph.weeks.length} Wochen</div>
+      </div>
+      <div class="pi-tasks">${phDone} / ${phTotal} Tasks</div>
+    </div>`;
+
+  // Week list
+  const list = document.getElementById("week-list");
+  list.innerHTML = "";
+  ph.weeks.forEach((week, wi) => {
+    const { done, total } = weekProgress(ph, week);
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const totalHours = week.days.reduce((a, d) => a + d.hours, 0);
+
+    const card = document.createElement("div");
+    card.className = "week-card";
+    card.style.borderColor = "#E8E5DF";
+
+    const dayChips = week.days.map((d, di) => {
+      const dayDone = d.tasks.every((_, ti) => progress[taskKey(ph.id, week.week, di, ti)]);
+      return `<span class="day-chip" style="background:${dayDone ? ph.bg : "#F5F3EF"};color:${dayDone ? ph.color : "#999"};${dayDone ? `border-color:${ph.color}30` : ""}">${d.day} ${d.hours}h</span>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="week-card-top">
+        <div>
+          <div class="week-num">WOCHE ${week.week}</div>
+          <div class="week-title">${week.title}</div>
+        </div>
+        <div class="week-right">
+          <div class="week-pct" style="color:${pct===100?"#16A34A":ph.color}">${pct}%</div>
+          <div class="week-hours">${totalHours}h</div>
+        </div>
+      </div>
+      <div class="week-bar-bg"><div class="week-bar-fill" style="width:${pct}%;background:${pct===100?"#16A34A":ph.color}"></div></div>
+      <div class="week-days">${dayChips}</div>`;
+
+    card.onmouseenter = () => { card.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; card.style.borderColor = "#C8A96E"; };
+    card.onmouseleave = () => { card.style.boxShadow = ""; card.style.borderColor = "#E8E5DF"; };
+    card.onclick = () => openWeek(wi);
+    list.appendChild(card);
+  });
+
+  document.getElementById("overview").style.display = "";
+  document.getElementById("week-detail").style.display = "none";
+}
+
+function openWeek(wi) {
+  currentWeekIdx = wi;
+  renderWeekDetail();
+  document.getElementById("overview").style.display = "none";
+  document.getElementById("week-detail").style.display = "";
+  window.scrollTo(0, 0);
+}
+
+function showOverview() {
+  renderOverview();
+}
+
+function navWeek(dir) {
+  const ph = PHASES[currentPhase];
+  const next = currentWeekIdx + dir;
+  if (next >= 0 && next < ph.weeks.length) {
+    currentWeekIdx = next;
+    renderWeekDetail();
+    window.scrollTo(0, 0);
+  }
+}
+
+function renderWeekDetail() {
+  const ph = PHASES[currentPhase];
+  const week = ph.weeks[currentWeekIdx];
+  const { done, total } = weekProgress(ph, week);
+
+  document.getElementById("wdt-num").textContent = `WOCHE ${week.week} · ${ph.label}`;
+  document.getElementById("wdt-name").textContent = week.title;
+  document.getElementById("week-count").style.color = done === total && total > 0 ? "#16A34A" : ph.color;
+  document.getElementById("week-count").textContent = `${done}/${total}`;
+
+  document.getElementById("prev-btn").disabled = currentWeekIdx === 0;
+  document.getElementById("next-btn").disabled = currentWeekIdx === ph.weeks.length - 1;
+
+  const dayList = document.getElementById("day-list");
+  dayList.innerHTML = "";
+  dayList.style.setProperty("--phase-color", ph.color);
+
+  week.days.forEach((day, di) => {
+    const allDone = day.tasks.every((_, ti) => progress[taskKey(ph.id, week.week, di, ti)]);
+    const block = document.createElement("div");
+    block.className = "day-block";
+
+    const dayNames = { Mo: "Montag", Di: "Dienstag", Mi: "Mittwoch", Do: "Donnerstag", Fr: "Freitag", Sa: "Samstag", So: "Sonntag" };
+
+    let tasksHtml = day.tasks.map((task, ti) => {
+      const key = taskKey(ph.id, week.week, di, ti);
+      const done = progress[key];
+      return `
+        <div class="task-row${done ? " done" : ""}" data-di="${di}" data-ti="${ti}" onclick="toggleTask(${ph.id},${week.week},${di},${ti},this)">
+          <div class="task-checkbox${done ? " checked" : ""}" style="--phase-color:${ph.color}">${done ? "✓" : ""}</div>
+          <div>
+            <div class="task-what">${task.what}</div>
+            <div class="task-how">${task.how}</div>
+            <span class="task-resource" style="color:${ph.color};background:${ph.bg}">${task.resource}</span>
+          </div>
+        </div>`;
+    }).join("");
+
+    block.innerHTML = `
+      <div class="day-header" style="background:${allDone ? ph.bg : "#FAFAF8"}">
+        <span class="day-name" style="color:${allDone ? ph.color : "#555"}">${dayNames[day.day] || day.day} ${allDone ? "✓" : ""}</span>
+        <span class="day-h">${day.hours}h</span>
+      </div>
+      ${tasksHtml}`;
+
+    dayList.appendChild(block);
+  });
+}
+
+function toggleTask(phaseId, weekNum, dayIdx, taskIdx, el) {
+  const key = taskKey(phaseId, weekNum, dayIdx, taskIdx);
+  progress[key] = !progress[key];
+  saveProgress();
+  updateHeader();
+
+  const row = el.closest ? el : el;
+  const isDone = progress[key];
+  const ph = PHASES.find(p => p.id === phaseId);
+
+  row.classList.toggle("done", isDone);
+  const cb = row.querySelector(".task-checkbox");
+  cb.classList.toggle("checked", isDone);
+  cb.textContent = isDone ? "✓" : "";
+
+  // Update week count
+  const week = ph.weeks.find(w => w.week === weekNum);
+  if (week) {
+    const { done, total } = weekProgress(ph, week);
+    document.getElementById("week-count").textContent = `${done}/${total}`;
+    document.getElementById("week-count").style.color = done === total ? "#16A34A" : ph.color;
+  }
+}
+
+// Init
+updateHeader();
+renderOverview();
+</script>
+</body>
+</html>
